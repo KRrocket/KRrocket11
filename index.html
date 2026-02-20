@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>KR Rocket - Идеальный Краш</title>
+    <link href="https://fonts.googleapis.com" rel="stylesheet">
+    <script src="https://telegram.org"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        :root {
+            --primary: #00ff88;
+            --accent: #00e5ff;
+            --danger: #ff3e3e;
+            --bg: #0b0e11;
+            --card: #181c21;
+            --gold: #f3ba2f;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { background: var(--bg); color: white; font-family: 'Montserrat', sans-serif; overflow: hidden; height: 100vh; }
+
+        /* Header */
+        header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 10px 15px; background: rgba(24, 28, 33, 0.95);
+            border-bottom: 1px solid #2d333b; height: 60px; position: fixed; top: 0; width: 100%; z-index: 100;
+        }
+        .logo { font-family: 'Orbitron', sans-serif; font-weight: 900; color: var(--primary); letter-spacing: 1px; }
+        .balance-container {
+            background: #2b3139; padding: 6px 12px; border-radius: 8px;
+            display: flex; align-items: center; gap: 8px; border: 1px solid #3e4550;
+        }
+        .balance-val { color: var(--gold); font-weight: 700; font-size: 0.9rem; }
+        .add-btn { background: var(--primary); color: #000; border: none; border-radius: 4px; width: 22px; height: 22px; font-weight: 900; cursor: pointer; }
+
+        /* Game Area */
+        .game-wrapper { margin-top: 60px; padding: 10px 15px; height: calc(100vh - 60px); display: flex; flex-direction: column; gap: 10px; }
+
+        .history-bar {
+            display: flex; gap: 8px; overflow-x: auto; padding: 5px 0;
+            scrollbar-width: none; min-height: 35px;
+        }
+        .history-bar::-webkit-scrollbar { display: none; }
+        .hist-item {
+            padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 700;
+            background: #2b3139; color: var(--primary); border: 1px solid #3e4550;
+            flex-shrink: 0; animation: slideIn 0.3s ease-out;
+        }
+        .hist-item.low { color: var(--danger); }
+
+        #chart-container {
+            position: relative; background: var(--card); border-radius: 16px;
+            flex: 1; overflow: hidden; border: 1px solid #2d333b;
+        }
+        canvas { width: 100%; height: 100%; }
+        .multiplier-display {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            font-family: 'Orbitron', sans-serif; font-size: 3rem; font-weight: 900; z-index: 10;
+        }
+        .status-label { position: absolute; top: 20%; left: 50%; transform: translateX(-50%); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 2px; color: #848e9c; }
+
+        .controls-card { background: var(--card); border-radius: 16px; padding: 15px; border: 1px solid #2d333b; }
+        .input-group { display: flex; gap: 10px; margin-bottom: 10px; }
+        input { flex: 1; background: #2b3139; border: 1px solid #3e4550; border-radius: 8px; color: white; padding: 12px; font-weight: 700; outline: none; }
+        
+        .bet-btn {
+            width: 100%; padding: 16px; border: none; border-radius: 12px;
+            font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 1.1rem;
+            cursor: pointer; text-transform: uppercase; transition: 0.2s;
+        }
+        .bet-btn.idle { background: var(--primary); color: #000; }
+        .bet-btn.waiting { background: #3e4550; color: #848e9c; }
+        .bet-btn.cashout { background: var(--gold); color: #000; box-shadow: 0 0 15px rgba(243, 186, 47, 0.4); }
+
+.players-header { display: flex; justify-content: space-between; font-size: 0.7rem; color: #848e9c; margin-bottom: 5px; }
+        .players-list { height: 100px; overflow-y: auto; }
+        .player-item { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #2d333b; font-size: 0.8rem; }
+        .p-amount { color: var(--gold); font-weight: 600; }
+
+        .modal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); z-index: 1000; justify-content: center; align-items: center; padding: 20px;
+        }
+        .modal-content { background: var(--card); width: 100%; border-radius: 20px; padding: 25px; border: 1px solid #3e4550; }
+        .settings-link { display: block; margin-top: 15px; color: var(--accent); text-decoration: none; font-size: 0.9rem; font-weight: bold; }
+
+        @keyframes slideIn { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div style="font-size: 1.5rem; cursor: pointer;" onclick="toggleModal('settings-modal', true)">⚙️</div>
+        <div class="logo">KR ROCKET</div>
+        <div class="header-right">
+            <div class="balance-container">
+                <span class="balance-val" id="user-balance">10.00 ₽</span>
+                <button class="add-btn" onclick="toggleModal('deposit-modal', true)">+</button>
+            </div>
+        </div>
+    </header>
+
+    <div class="game-wrapper">
+        <div class="history-bar" id="history-bar"></div>
+
+        <div id="chart-container">
+            <div class="status-label" id="game-status">Ожидание ставок...</div>
+            <div class="multiplier-display" id="main-multi">READY</div>
+            <canvas id="gameCanvas"></canvas>
+        </div>
+
+        <div class="controls-card">
+            <div class="input-group">
+                <input type="number" id="bet-input" value="10">
+                <div style="display:flex; gap:5px;">
+                    <button onclick="setBet(0.5)" style="background:#2b3139; border:none; color:white; padding:10px; border-radius:8px;">1/2</button>
+                    <button onclick="setBet(2)" style="background:#2b3139; border:none; color:white; padding:10px; border-radius:8px;">x2</button>
+                </div>
+            </div>
+            
+            <button class="bet-btn idle" id="action-btn" onclick="handleAction()">Поставить ставку</button>
+
+            <div style="margin-top: 10px;">
+                <div class="players-header">
+                    <span>Игрок / Ставка</span>
+                    <span>Онлайн: <span style="color:var(--primary)" id="online-val">0</span></span>
+                </div>
+                <div class="players-list" id="p-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Deposit Modal -->
+    <div id="deposit-modal" class="modal">
+        <div class="modal-content">
+            <h2 style="margin-bottom: 10px; color: var(--gold);">Пополнение</h2>
+            <input type="number" id="dep-amount" placeholder="Сумма" style="width: 100%; margin-bottom: 15px;">
+            <button class="bet-btn idle" onclick="createPayment()">Оплатить</button>
+            <button onclick="toggleModal('deposit-modal', false)" style="background:none; border:none; color:#848e9c; margin-top:15px; width:100%;">Закрыть</button>
+        </div>
+    </div>
+
+    <!-- Settings Modal (ВОЗВРАЩЕНО В ОРИГИНАЛ) -->
+    <div id="settings-modal" class="modal">
+        <div class="modal-content" style="text-align: center;">
+            <h2 style="margin-bottom: 20px;">Настройки</h2>
+            <button class="bet-btn waiting" onclick="alert('Политика: игра не выводит настоящие деньги, ракетка - просто имитация игры.')" style="margin-bottom: 15px; font-size: 0.8rem; color: white;">ПОЛИТИКА КОНФИДЕНЦИАЛЬНОСТИ</button>
+
+<div style="margin-top: 20px;">
+                <p style="color: #848e9c; font-size: 0.8rem;">Служба поддержки:</p>
+                <a href="#" class="settings-link">ТГ КАНАЛ - @KRrocket_ru</a>
+            </div>
+            <button onclick="toggleModal('settings-modal', false)" style="background:none; border:none; color:#848e9c; margin-top:25px; width:100%;">Вернуться в игру</button>
+        </div>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        if(tg) tg.expand();
+
+        const socket = io();
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const mainMultiDisplay = document.getElementById('main-multi');
+        const historyBar = document.getElementById('history-bar');
+        const actionBtn = document.getElementById('action-btn');
+        const userBalanceEl = document.getElementById('user-balance');
+
+        let gameState = 'WAITING'; 
+        let multiplier = 1.00;
+        let balance = 10.00;
+        let currentBet = 0;
+        let hasBet = false;
+        let isCashedOut = false;
+
+        socket.on('gameUpdate', (data) => {
+            gameState = data.status;
+            multiplier = data.multiplier;
+            document.getElementById('online-val').innerText = data.online;
+
+            if (gameState === 'WAITING') {
+                // ВОЗВРАЩЕН ОРИГИНАЛЬНЫЙ ТЕКСТ ОТСЧЕТА
+                document.getElementById('game-status').innerText = Взлет через ${data.timer.toFixed(1)}с;
+                mainMultiDisplay.innerText = "READY";
+                mainMultiDisplay.style.color = "white";
+                if (data.timer > 4.8) {
+                    hasBet = false; isCashedOut = false;
+                    actionBtn.innerText = "Поставить ставку";
+                    actionBtn.className = "bet-btn idle";
+                }
+            } else if (gameState === 'FLYING') {
+                document.getElementById('game-status').innerText = "ПОЛЕТ НОРМАЛЬНЫЙ";
+                mainMultiDisplay.innerText = multiplier.toFixed(2) + "x";
+                mainMultiDisplay.style.color = "var(--primary)";
+                if (hasBet && !isCashedOut) {
+                    actionBtn.innerText = "ЗАБРАТЬ";
+                    actionBtn.className = "bet-btn cashout";
+                }
+            } else if (gameState === 'CRASHED') {
+                document.getElementById('game-status').innerText = "CRAAAASH!";
+                mainMultiDisplay.innerText = multiplier.toFixed(2) + "x";
+                mainMultiDisplay.style.color = "var(--danger)";
+                updateHistory(data.history);
+            }
+        });
+
+        function handleAction() {
+            const amount = parseFloat(document.getElementById('bet-input').value);
+            if (gameState === 'WAITING' && !hasBet) {
+                if (balance >= amount && amount > 0) {
+                    balance -= amount;
+                    currentBet = amount;
+                    hasBet = true;
+                    updateBalance();
+                    actionBtn.innerText = "ОЖИДАНИЕ...";
+                    actionBtn.className = "bet-btn waiting";
+                    socket.emit('placeBet', {amount});
+                }
+            } else if (gameState === 'FLYING' && hasBet && !isCashedOut) {
+                balance += currentBet * multiplier;
+                isCashedOut = true;
+                updateBalance();
+                actionBtn.innerText = "ЗАБРАНО!";
+                actionBtn.className = "bet-btn waiting";
+                socket.emit('cashout', {multiplier});
+            }
+        }
+
+        function createPayment() {
+            const amount = document.getElementById('dep-amount').value;
+            if(tg.openLink) tg.openLink(https://anypay.io{amount});
+            else window.open(https://anypay.io{amount}, '_blank');
+        }
+
+function updateBalance() { userBalanceEl.innerText = balance.toFixed(2) + " ₽"; }
+        function setBet(m) { document.getElementById('bet-input').value = Math.floor(document.getElementById('bet-input').value * m); }
+        function toggleModal(id, show) { document.getElementById(id).style.display = show ? 'flex' : 'none'; }
+        function updateHistory(history) {
+            historyBar.innerHTML = '';
+            history.forEach(m => {
+                const item = document.createElement('div');
+                item.className = hist-item ${m < 2 ? 'low' : ''};
+                item.innerText = m + 'x';
+                historyBar.prepend(item);
+            });
+        }
+
+        function resize() {
+            canvas.width = canvas.offsetWidth * window.devicePixelRatio;
+            canvas.height = canvas.offsetHeight * window.devicePixelRatio;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // Сетка
+            ctx.strokeStyle = '#2d333b'; ctx.lineWidth = 1;
+            for(let i=0; i<canvas.width; i+=50) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke(); }
+            
+            if (gameState === 'FLYING' || gameState === 'CRASHED') {
+                const x = Math.min((multiplier - 1) * 60, canvas.width - 40);
+                const y = Math.max(canvas.height - (multiplier - 1) * 45 - 60, 40);
+                ctx.beginPath(); ctx.strokeStyle = gameState === 'CRASHED' ? '#ff3e3e' : '#00ff88';
+                ctx.lineWidth = 5; ctx.moveTo(0, canvas.height);
+                ctx.quadraticCurveTo(x/2, canvas.height, x, y); ctx.stroke();
+            }
+            requestAnimationFrame(draw);
+        }
+        draw();
+    </script>
+</body>
+</html>
