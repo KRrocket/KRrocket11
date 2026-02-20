@@ -64,11 +64,11 @@ io.on('connection', (socket) => {
     onlineCount++;
     
     socket.on('placeBet', (data) => {
-        console.log(Игрок сделал ставку: ${data.amount} руб.);
+        console.log(`Игрок сделал ставку: ${data.amount} руб.`);
     });
 
     socket.on('cashout', (data) => {
-        console.log(Игрок забрал выигрыш на x${data.multiplier});
+        console.log(`Игрок забрал выигрыш на x${data.multiplier}`);
     });
 
     socket.on('disconnect', () => {
@@ -85,4 +85,5 @@ app.get('/payment/callback', (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
+
 server.listen(PORT, () => console.log(Сервер запущен на порту ${PORT}));
