@@ -79,7 +79,7 @@ io.on('connection', (socket) => {
 // Роут для приема уведомлений об оплате (Webhook)
 app.get('/payment/callback', (req, res) => {
     const { amount, user_id } = req.query;
-    console.log(Пополнение: пользователь ${user_id} внес ${amount} руб.);
+    console.log(`Пополнение: пользователь ${user_id} внес ${amount} руб.`);
     // Здесь логика добавления в БД
     res.send("OK");
 });
@@ -87,4 +87,5 @@ app.get('/payment/callback', (req, res) => {
 const PORT = process.env.PORT || 10000;
 
 server.listen(PORT,  `0.0.0.0`, () => console.log(`Сервер запущен на порту ${PORT}`));
+
 
