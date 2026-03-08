@@ -229,8 +229,8 @@
 
         function createPayment() {
             const amount = document.getElementById('dep-amount').value;
-            if(tg.openLink) tg.openLink(https://anypay.io{amount});
-            else window.open(https://anypay.io{amount}, '_blank');
+            if(tg.openLink) tg.openLink(`https://anypay.io{amount}`);
+            else window.open(`https://anypay.io{amount}`, '_blank');
         }
 
 function updateBalance() { userBalanceEl.innerText = balance.toFixed(2) + " ₽"; }
@@ -273,4 +273,5 @@ function updateBalance() { userBalanceEl.innerText = balance.toFixed(2) + " ₽"
 </body>
 
 </html>
+
 
