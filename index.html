@@ -181,7 +181,7 @@
 
             if (gameState === 'WAITING') {
                 // ВОЗВРАЩЕН ОРИГИНАЛЬНЫЙ ТЕКСТ ОТСЧЕТА
-                document.getElementById('game-status').innerText = Взлет через ${data.timer.toFixed(1)}с;
+                document.getElementById('game-status').innerText = `Взлет через ${data.timer.toFixed(1)}с`;
                 mainMultiDisplay.innerText = "READY";
                 mainMultiDisplay.style.color = "white";
                 if (data.timer > 4.8) {
@@ -273,3 +273,4 @@ function updateBalance() { userBalanceEl.innerText = balance.toFixed(2) + " ₽"
 </body>
 
 </html>
+
