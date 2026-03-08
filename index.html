@@ -159,7 +159,7 @@
         const tg = window.Telegram.WebApp;
         if(tg) tg.expand();
 
-        const socket = io();
+        const socket = io('https://krrocket01.onrender.com');
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         const mainMultiDisplay = document.getElementById('main-multi');
@@ -271,4 +271,5 @@ function updateBalance() { userBalanceEl.innerText = balance.toFixed(2) + " ₽"
         draw();
     </script>
 </body>
+
 </html>
