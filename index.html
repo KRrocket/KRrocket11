@@ -240,7 +240,7 @@ function updateBalance() { userBalanceEl.innerText = balance.toFixed(2) + " ₽"
             historyBar.innerHTML = '';
             history.forEach(m => {
                 const item = document.createElement('div');
-                item.className = hist-item ${m < 2 ? 'low' : ''};
+                item.className = `hist-item ${m < 2 ? 'low' : ''}`;
                 item.innerText = m + 'x';
                 historyBar.prepend(item);
             });
@@ -273,5 +273,6 @@ function updateBalance() { userBalanceEl.innerText = balance.toFixed(2) + " ₽"
 </body>
 
 </html>
+
 
 
